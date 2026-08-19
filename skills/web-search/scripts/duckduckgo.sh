@@ -9,9 +9,9 @@ QUERY=""; PAGE=1; TIMELIMIT=""; REGION="us-en"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --page|-p) PAGE="$2"; shift 2 ;;
-        --time|-t) TIMELIMIT="$2"; shift 2 ;;
-        --region|-r) REGION="$2"; shift 2 ;;
+        -p) PAGE="$2"; shift 2 ;;
+        -t) TIMELIMIT="$2"; shift 2 ;;
+        -r) REGION="$2"; shift 2 ;;
         *) QUERY="$QUERY $1"; shift ;;
     esac
 done
