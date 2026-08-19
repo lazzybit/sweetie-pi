@@ -1,0 +1,5 @@
+node_modules/
+
+/skills/.*
+
+/extensions/extra-providers.ts
