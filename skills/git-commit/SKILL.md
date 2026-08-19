@@ -7,17 +7,15 @@ description: "use when you need to commit change"
 
 優先遵循項目的既有的 commit message 風格，如果沒有固定的模式則使用推薦風格。
 
-## 簡單變動的推薦風格
+## 推薦風格
 
-僅包含單一變動項：
+使用一行首字母小寫的英文祈使句：
 
 ```
 extract validation into separate module 
 ```
 
-## 複雜變動的推薦風格
-
-先以一個大變動項概括整體變更，空一行，之後再列出小變動項：
+在提交複雜變更時，可以在空一行後，以相同方式列出對應的子項：
 
 ```
 refactor payment processing pipeline
@@ -27,12 +25,7 @@ refactor payment processing pipeline
 - update unit tests to cover edge cases
 ```
 
-## 變動項
-
-- 首字母小寫
-- 祈使語氣
-- 英文
-- 單行
+在提交前，你應該結合變更內容理解用戶的意圖，並在 message 中體現。
 
 ## 禁忌
 
