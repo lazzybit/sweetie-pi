@@ -10,12 +10,9 @@ export default function (pi: ExtensionAPI) {
       {
         customType: "no-project",
         content:
-          "The current working directory is the home directory. Use `git`, `rg`, and other broad tools sparingly.",
+          "當前目錄是家目錄，克制使用 git 與搜索工具。",
         display: false,
-      },
-      { deliverAs: "nextTurn" },
+      }
     );
-
-    ctx.ui.notify("no-project prompt injected.", "info");
   });
 }
