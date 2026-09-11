@@ -130,8 +130,7 @@ function loadAdvisorConfig(ctx: ExtensionContext): AdvisorConfig {
 const ADVISOR_UNAVAILABLE_MESSAGE = "Advisor is not available.";
 
 function advisorDisplayName(config: AdvisorConfig): string {
-  if (!config.provider || !config.model) return "unconfigured";
-  return `${config.model} (${config.provider})`;
+  return config.model ?? "unconfigured";
 }
 
 const ADVISOR_SYSTEM_PROMPT = [
@@ -468,8 +467,9 @@ function registerAdvisorTool(
       }
 
       const displayLabel =
-        theme.fg("customMessageLabel", theme.bold("[advisor] ")) +
-        theme.fg("toolTitle", theme.bold(advisorDisplayName(config)));
+        theme.fg("toolTitle", theme.bold(ADVISOR_TOOL_NAME)) +
+        " " +
+        theme.fg("accent", advisorDisplayName(config));
 
       return new Text(displayLabel, 0, 0);
     },
