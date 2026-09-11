@@ -7,7 +7,9 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import {
   convertToLlm,
+  getAgentDir,
   sessionEntryToContextMessages,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import type {
   AssistantMessage,
@@ -22,13 +24,116 @@ import type {
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-// Change these values to select the reviewer used by advisor().
-const ADVISOR_PROVIDER = "openai-proxy";
-const ADVISOR_MODEL_ID = "gpt-6-astra";
-const ADVISOR_EFFORT: ThinkingLevel | undefined = "xhigh";
+type AdvisorSettingsFile = {
+  advisor?: unknown;
+};
+
+type AdvisorConfig = {
+  enabled: boolean;
+  provider?: string;
+  model?: string;
+  effort?: ThinkingLevel;
+  errorMessage?: string;
+};
+
+const THINKING_LEVELS: readonly ThinkingLevel[] = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
 
 const ADVISOR_TOOL_NAME = "advisor";
-const ADVISOR_DISPLAY_LABEL = `[advisor] ${ADVISOR_MODEL_ID} (${ADVISOR_PROVIDER})`;
+const ADVISOR_DISPLAY_LABEL = "[advisor]";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isThinkingLevel(value: unknown): value is ThinkingLevel {
+  return (
+    typeof value === "string" && THINKING_LEVELS.includes(value as ThinkingLevel)
+  );
+}
+
+function loadAdvisorConfig(ctx: ExtensionContext): AdvisorConfig {
+  const settingsManager = SettingsManager.create(ctx.cwd, getAgentDir(), {
+    projectTrusted: ctx.isProjectTrusted(),
+  });
+  const globalSettings = settingsManager.getGlobalSettings() as AdvisorSettingsFile;
+  const projectSettings = settingsManager.getProjectSettings() as AdvisorSettingsFile;
+  const errors = settingsManager.drainErrors().map(({ scope, path, error }) => {
+    const location = path ? ` (${path})` : "";
+    return `Failed to load ${scope} settings${location}: ${error.message}`;
+  });
+  const advisorSettings = (value: unknown): Record<string, unknown> => {
+    if (value === undefined) return {};
+    if (!isRecord(value)) {
+      errors.push("advisor must be an object.");
+      return {};
+    }
+    return value;
+  };
+  const globalAdvisor = advisorSettings(globalSettings.advisor);
+  const projectAdvisor = advisorSettings(projectSettings.advisor);
+  const settings = { ...globalAdvisor, ...projectAdvisor };
+
+  let enabled = false;
+  if (settings.enabled !== undefined) {
+    if (typeof settings.enabled === "boolean") {
+      enabled = settings.enabled;
+    } else {
+      errors.push("advisor.enabled must be a boolean.");
+    }
+  }
+
+  let provider: string | undefined;
+  if (settings.provider !== undefined) {
+    if (typeof settings.provider === "string" && settings.provider.length > 0) {
+      provider = settings.provider;
+    } else {
+      errors.push("advisor.provider must be a non-empty string.");
+    }
+  }
+
+  let model: string | undefined;
+  if (settings.model !== undefined) {
+    if (typeof settings.model === "string" && settings.model.length > 0) {
+      model = settings.model;
+    } else {
+      errors.push("advisor.model must be a non-empty string.");
+    }
+  }
+
+  let effort: ThinkingLevel | undefined;
+  if (settings.effort !== undefined) {
+    if (isThinkingLevel(settings.effort)) {
+      effort = settings.effort;
+    } else {
+      errors.push(
+        "advisor.effort must be one of: minimal, low, medium, high, xhigh, max.",
+      );
+    }
+  }
+
+  return {
+    enabled,
+    provider,
+    model,
+    effort,
+    errorMessage: errors.length > 0 ? errors.join(" ") : undefined,
+  };
+}
+
+const ADVISOR_UNAVAILABLE_MESSAGE = "Advisor is not available.";
+
+function advisorDisplayName(config: AdvisorConfig): string {
+  if (!config.provider || !config.model) return "unconfigured";
+  return `${config.model} (${config.provider})`;
+}
+
 const ADVISOR_SYSTEM_PROMPT = [
   "You are the reviewer in an advisor-strategy workflow.",
   "Read the executor's complete conversation and return exactly one of:",
@@ -51,8 +156,6 @@ const ADVISOR_PROMPT_GUIDELINES = [
   "After advisor returns, restate its key guidance in the next visible reply before continuing.",
 ];
 
-const NO_MODEL_MESSAGE =
-  "Advisor model is not available. Check ADVISOR_PROVIDER and ADVISOR_MODEL_ID in extensions/advisor.ts.";
 const ABORTED_MESSAGE = "Advisor call was cancelled before it completed.";
 const EMPTY_RESPONSE_MESSAGE = "Advisor returned no text content.";
 
@@ -78,7 +181,7 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function resultText(toolResult: AgentToolResult<AdvisorDetails>): string {
+function resultText<TDetails>(toolResult: AgentToolResult<TDetails>): string {
   return toolResult.content
     .filter((part): part is TextContent => part.type === "text")
     .map((part) => part.text)
@@ -107,12 +210,13 @@ function textFromResponse(response: AssistantMessage): string {
 
 function responseResult(
   response: AssistantMessage,
+  ctx: ExtensionContext,
+  config: AdvisorConfig,
   advisorLabel: string,
-  effort: ThinkingLevel | undefined,
 ): AgentToolResult<AdvisorDetails> {
   const details: AdvisorDetails = {
     advisorModel: advisorLabel,
-    effort,
+    effort: config.effort,
     usage: response.usage,
     stopReason: response.stopReason,
   };
@@ -126,18 +230,12 @@ function responseResult(
 
   if (response.stopReason === "error") {
     const message = response.errorMessage ?? "unknown error";
-    return result(`Advisor call failed: ${message}`, {
-      ...details,
-      errorMessage: message,
-    });
+    return advisorUnavailable(ctx, config, `Advisor call failed: ${message}`);
   }
 
   const text = textFromResponse(response);
   if (!text) {
-    return result(EMPTY_RESPONSE_MESSAGE, {
-      ...details,
-      errorMessage: "empty response",
-    });
+    return advisorUnavailable(ctx, config, EMPTY_RESPONSE_MESSAGE);
   }
 
   return result(text, details);
@@ -171,6 +269,15 @@ function buildCompletionOptions(
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function advisorUnavailable(
+  ctx: ExtensionContext,
+  config: AdvisorConfig,
+  reason: string,
+): AgentToolResult<AdvisorDetails> {
+  ctx.ui.notify(`${ADVISOR_UNAVAILABLE_MESSAGE} ${reason}`, "error");
+  return result(ADVISOR_UNAVAILABLE_MESSAGE, { effort: config.effort });
 }
 
 function isAbortError(
@@ -256,10 +363,11 @@ function buildAdvisorMessages(
 async function executeAdvisor(
   ctx: ExtensionContext,
   pi: ExtensionAPI,
+  config: AdvisorConfig,
   signal: AbortSignal | undefined,
   onUpdate: AgentToolUpdateCallback<AdvisorDetails> | undefined,
 ): Promise<AgentToolResult<AdvisorDetails>> {
-  const effort = ADVISOR_EFFORT;
+  const effort = config.effort;
   if (signal?.aborted) {
     return result(ABORTED_MESSAGE, {
       effort,
@@ -268,12 +376,36 @@ async function executeAdvisor(
     });
   }
 
-  const advisor = ctx.modelRegistry.find(ADVISOR_PROVIDER, ADVISOR_MODEL_ID);
+  if (config.errorMessage) {
+    return advisorUnavailable(
+      ctx,
+      config,
+      `Invalid advisor configuration: ${config.errorMessage}`,
+    );
+  }
+  if (!config.provider) {
+    return advisorUnavailable(ctx, config, "advisor.provider is not configured.");
+  }
+  if (!config.model) {
+    return advisorUnavailable(ctx, config, "advisor.model is not configured.");
+  }
+
+  let advisor;
+  try {
+    advisor = ctx.modelRegistry.find(config.provider, config.model);
+  } catch (error) {
+    return advisorUnavailable(
+      ctx,
+      config,
+      `Could not resolve advisor model: ${errorText(error)}`,
+    );
+  }
   if (!advisor) {
-    return result(NO_MODEL_MESSAGE, {
-      effort,
-      errorMessage: "model not found",
-    });
+    return advisorUnavailable(
+      ctx,
+      config,
+      `Advisor model "${config.provider}/${config.model}" is not available.`,
+    );
   }
 
   const advisorLabel = `${advisor.provider}:${advisor.id}`;
@@ -282,12 +414,11 @@ async function executeAdvisor(
   try {
     messages = buildAdvisorMessages(ctx, pi);
   } catch (error) {
-    const message = errorText(error);
-    return result(`Advisor could not build conversation context: ${message}`, {
-      advisorModel: advisorLabel,
-      effort,
-      errorMessage: message,
-    });
+    return advisorUnavailable(
+      ctx,
+      config,
+      `Could not build advisor conversation context: ${errorText(error)}`,
+    );
   }
 
   onUpdate?.({
@@ -306,7 +437,7 @@ async function executeAdvisor(
       buildCompletionOptions(advisor.api, signal, effort),
     );
 
-    return responseResult(response, advisorLabel, effort);
+    return responseResult(response, ctx, config, advisorLabel);
   } catch (error) {
     const message = errorText(error);
     if (isAbortError(error, signal)) {
@@ -318,15 +449,14 @@ async function executeAdvisor(
       });
     }
 
-    return result(`Advisor call failed: ${message}`, {
-      advisorModel: advisorLabel,
-      effort,
-      errorMessage: message,
-    });
+    return advisorUnavailable(ctx, config, `Advisor call failed: ${message}`);
   }
 }
 
-export default function (pi: ExtensionAPI) {
+function registerAdvisorTool(
+  pi: ExtensionAPI,
+  config: AdvisorConfig,
+): void {
   pi.registerTool({
     name: ADVISOR_TOOL_NAME,
     label: ADVISOR_DISPLAY_LABEL,
@@ -339,10 +469,7 @@ export default function (pi: ExtensionAPI) {
 
       const displayLabel =
         theme.fg("customMessageLabel", theme.bold("[advisor] ")) +
-        theme.fg(
-          "toolTitle",
-          theme.bold(`${ADVISOR_MODEL_ID} (${ADVISOR_PROVIDER})`),
-        );
+        theme.fg("toolTitle", theme.bold(advisorDisplayName(config)));
 
       return new Text(displayLabel, 0, 0);
     },
@@ -377,7 +504,29 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: ADVISOR_PROMPT_GUIDELINES,
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, signal, onUpdate, ctx) {
-      return executeAdvisor(ctx, pi, signal, onUpdate);
+      return executeAdvisor(ctx, pi, config, signal, onUpdate);
     },
+  });
+}
+
+export default function (pi: ExtensionAPI) {
+  let advisorToolRegistered = false;
+
+  pi.on("session_start", (_event, ctx) => {
+    let config: AdvisorConfig;
+    try {
+      config = loadAdvisorConfig(ctx);
+    } catch (error) {
+      ctx.ui.notify(
+        `${ADVISOR_UNAVAILABLE_MESSAGE} Could not load advisor settings: ${errorText(error)}`,
+        "error",
+      );
+      return;
+    }
+
+    if (config.enabled !== true || advisorToolRegistered) return;
+
+    advisorToolRegistered = true;
+    registerAdvisorTool(pi, config);
   });
 }
