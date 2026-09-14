@@ -1,8 +1,8 @@
 {
   "lastChangelogVersion": "0.85.1",
   "theme": "dark",
-  "defaultProvider": "openai-proxy",
-  "defaultModel": "gpt-5.6-luna",
+  "defaultProvider": "deepseek",
+  "defaultModel": "deepseek-flash",
   "defaultThinkingLevel": "max",
   "advisor": {
     "enabled": true,
@@ -15,5 +15,6 @@
     "maxRetries": 1000,
     "baseDelayMs": 5000,
     "maxAgentDelayMs": 5000
-  }
+  },
+  "hideThinkingBlock": true
 }
