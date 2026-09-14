@@ -244,12 +244,17 @@ function buildCompletionOptions(
   api: string,
   signal: AbortSignal | undefined,
   effort: ThinkingLevel | undefined,
+  sessionId: string | undefined,
 ): CompletionOptions {
-  if (effort === undefined) return { signal };
+  // Passing the pi session id keeps prompt-cache routing stable across advisor
+  // calls: Responses emits prompt_cache_key plus session_id and
+  // x-client-request-id affinity headers when sessionId is set.
+  const base = { signal, sessionId };
+  if (effort === undefined) return base;
 
   if (api === "openai-responses") {
     const options: OpenAIResponsesOptions = {
-      signal,
+      ...base,
       reasoningEffort: effort,
     };
     return options;
@@ -257,13 +262,13 @@ function buildCompletionOptions(
 
   if (api === "openai-completions") {
     const options: OpenAICompletionsOptions = {
-      signal,
+      ...base,
       reasoningEffort: effort,
     };
     return options;
   }
 
-  return { signal };
+  return base;
 }
 
 function errorText(error: unknown): string {
@@ -433,7 +438,12 @@ async function executeAdvisor(
         messages,
         tools: [],
       },
-      buildCompletionOptions(advisor.api, signal, effort),
+      buildCompletionOptions(
+        advisor.api,
+        signal,
+        effort,
+        ctx.sessionManager.getSessionId(),
+      ),
     );
 
     return responseResult(response, ctx, config, advisorLabel);
