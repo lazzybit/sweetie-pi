@@ -1,12 +1,12 @@
 ---
 name: pi-docs
-description: "use when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI"
+description: "use when you need to work with pi itself, its SDK, extensions, themes, skills, or TUI"
 ---
 
-Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
-- Main documentation: /data/data/com.termux/files/usr/lib/node_modules/@earendil-works/pi-coding-agent/README.md
-- Additional docs: /data/data/com.termux/files/usr/lib/node_modules/@earendil-works/pi-coding-agent/docs
-- Examples: /data/data/com.termux/files/usr/lib/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)
+Pi documentation lives in the pi package install directory (locate it from the running `pi` executable):
+- Main documentation: README.md
+- Additional docs: docs/
+- Examples: examples/ (extensions, custom tools, SDK)
 - When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory
 - When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)
 - When working on pi topics, read the docs and examples, and follow .md cross-references before implementing
