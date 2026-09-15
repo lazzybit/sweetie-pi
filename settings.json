@@ -3,7 +3,7 @@
   "theme": "dark",
   "defaultProvider": "deepseek",
   "defaultModel": "deepseek-flash",
-  "defaultThinkingLevel": "max",
+  "defaultThinkingLevel": "high",
   "advisor": {
     "enabled": true,
     "provider": "openai-proxy",
