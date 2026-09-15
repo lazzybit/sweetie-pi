@@ -26,11 +26,3 @@ export const ADVISOR_SYSTEM_PROMPT = [
 
 export const ADVISOR_DESCRIPTION =
   "Ask a stronger reviewer model for guidance. The full conversation and executor tool inventory are forwarded automatically. Takes no parameters.";
-export const ADVISOR_PROMPT_SNIPPET =
-  "Ask a stronger reviewer for a plan, correction, or stop signal when judgment is needed";
-export const ADVISOR_PROMPT_GUIDELINES = [
-  "Call advisor before substantive work, before writing, or before committing to an uncertain interpretation.",
-  "Call advisor again when stuck, when evidence conflicts, or when considering a change of approach.",
-  "Before calling advisor at the end, make the deliverable durable and run the relevant validation.",
-  "After advisor returns, restate its key guidance in the next visible reply before continuing.",
-];

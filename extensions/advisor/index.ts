@@ -18,8 +18,6 @@ import { errorText, executeAdvisor } from "./execute.ts";
 import {
   ADVISOR_DESCRIPTION,
   ADVISOR_DISPLAY_LABEL,
-  ADVISOR_PROMPT_GUIDELINES,
-  ADVISOR_PROMPT_SNIPPET,
   ADVISOR_TOOL_NAME,
   ADVISOR_UNAVAILABLE_MESSAGE,
 } from "./prompt.ts";
@@ -31,8 +29,6 @@ function registerAdvisorTool(pi: ExtensionAPI, config: AdvisorConfig): void {
     label: ADVISOR_DISPLAY_LABEL,
     ...createAdvisorRenderers(config),
     description: ADVISOR_DESCRIPTION,
-    promptSnippet: ADVISOR_PROMPT_SNIPPET,
-    promptGuidelines: ADVISOR_PROMPT_GUIDELINES,
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, signal, onUpdate, ctx) {
       return executeAdvisor(ctx, pi, config, signal, onUpdate);
