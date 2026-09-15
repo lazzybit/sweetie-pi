@@ -1,6 +1,6 @@
 {
   "lastChangelogVersion": "0.85.1",
-  "theme": "dark",
+  "theme": "light/dark",
   "defaultProvider": "deepseek",
   "defaultModel": "deepseek-flash",
   "defaultThinkingLevel": "high",
