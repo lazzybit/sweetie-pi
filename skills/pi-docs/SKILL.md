@@ -1,5 +1,5 @@
 ---
-name: pi-extension
+name: pi-docs
 description: "use when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI"
 ---
 
