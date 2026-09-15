@@ -12,7 +12,7 @@ Configure the advisor model in `settings.json`:
 {
   "advisor": {
     "enabled": true,
-    "provider": "openai-proxy",
+    "provider": "openai",
     "model": "gpt-6-astra",
     "effort": "xhigh"
   }
