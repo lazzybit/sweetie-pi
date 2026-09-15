@@ -14,7 +14,7 @@ Configure the advisor model in `settings.json`:
     "enabled": true,
     "provider": "openai",
     "model": "gpt-6-astra",
-    "effort": "xhigh"
+    "thinkingLevel": "xhigh"
   }
 }
 ```

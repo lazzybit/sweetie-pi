@@ -94,12 +94,12 @@ export function loadAdvisorConfig(ctx: ExtensionContext): AdvisorConfig {
   }
 
   let effort: ThinkingLevel | undefined;
-  if (settings.effort !== undefined) {
-    if (isThinkingLevel(settings.effort)) {
-      effort = settings.effort;
+  if (settings.thinkingLevel !== undefined) {
+    if (isThinkingLevel(settings.thinkingLevel)) {
+      effort = settings.thinkingLevel;
     } else {
       errors.push(
-        "advisor.effort must be one of: minimal, low, medium, high, xhigh, max.",
+        "advisor.thinkingLevel must be one of: minimal, low, medium, high, xhigh, max.",
       );
     }
   }
