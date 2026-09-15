@@ -21,8 +21,8 @@ Configure the advisor model in `settings.json`:
 
 ## openai-proxy
 
-Set the local endpoint without committing the change:
+Set custom endpoint:
 
 ```bash
-sed -i 's|https://example.invalid|https://your-endpoint.example|' extensions/openai-proxy/openai-proxy.const.ts
+sed -i 's|https://example.invalid|https://your-endpoint.example|' extensions/openai-proxy/config.ts
 ```

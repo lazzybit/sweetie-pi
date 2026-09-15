@@ -1,9 +1,9 @@
 /**
  * Generic openai-compatible Responses API provider for pi.
  *
- * The API base URL is defined in openai-proxy.const.ts. The committed default
- * is an intentionally invalid placeholder; change it locally for the endpoint.
- * pi appends /models for discovery and /responses for inference.
+ * The API base URL is defined in config.ts. The file is gitignored and
+ * created locally, so the real endpoint never enters the repository. pi
+ * appends /models for discovery and /responses for inference.
  *
  * Auth: pi's built-in /login flow. Run `/login openai-proxy` in interactive
  * mode and enter your API key. pi stores and resolves the credential itself
@@ -18,7 +18,7 @@
  */
 
 import type { ExtensionAPI, ProviderModelConfig } from "@earendil-works/pi-coding-agent";
-import { OPENAI_PROXY_BASE_URL } from "./openai-proxy.const.ts";
+import { OPENAI_PROXY_BASE_URL } from "./config.ts";
 
 const OPENAI_PROVIDER_ID = "openai-proxy";
 

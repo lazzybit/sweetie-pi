@@ -1,3 +1,5 @@
 node_modules/
 
 /skills/.*
+
+/extensions/openai-proxy/config.ts
