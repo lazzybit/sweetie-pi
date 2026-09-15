@@ -16,6 +16,5 @@
     "baseDelayMs": 5000,
     "maxAgentDelayMs": 5000
   },
-  "hideThinkingBlock": true,
-  "tuiMode": "fullscreen"
+  "hideThinkingBlock": true
 }
