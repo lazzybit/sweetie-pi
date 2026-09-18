@@ -16,5 +16,9 @@
     "baseDelayMs": 5000,
     "maxAgentDelayMs": 5000
   },
-  "hideThinkingBlock": true
+  "hideThinkingBlock": true,
+  "fullscreenScrollbar": "hidden",
+  "transport": "auto",
+  "enableInstallTelemetry": false,
+  "quietStartup": false
 }
