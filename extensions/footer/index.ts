@@ -1,5 +1,5 @@
 /**
- * status-bar - minimal single-line footer.
+ * footer - minimal single-line footer.
  *
  * Layout:
  *   {model} ({thinking})          CTX:{context%}．CH:{cache%}
