@@ -21,6 +21,10 @@ Configure the advisor model in `settings.json`:
 
 Or run `/settings-advisor`.
 
+## usage
+
+Run `/usage` to show cumulative token, cache, and context stats.
+
 ## openai-proxy
 
 Set custom endpoint:
