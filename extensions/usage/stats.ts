@@ -8,6 +8,9 @@
  * Every call is counted, not just visible assistant turns:
  * - assistant messages (the conversation itself)
  * - compaction and branch summaries (summarization overhead)
+ *
+ * Advisor tool results are bucketed separately: their usage is billed to the
+ * advisor model, not to the main conversation, so it never enters `totals`.
  */
 
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
@@ -35,6 +38,8 @@ export interface DashboardStats {
 	assistant: UsageTotals;
 	/** Compaction / branch-summary calls only. */
 	summaries: UsageTotals;
+	/** Advisor tool calls only; separate from `totals` (different model and bill). */
+	advisor: UsageTotals;
 	byModel: ModelUsage[];
 	assistantTurns: number;
 	userMessages: number;
@@ -43,6 +48,8 @@ export interface DashboardStats {
 	branchSummaries: number;
 	/** input + cacheRead + cacheWrite, i.e. everything the model read. */
 	promptTokens: number;
+	/** Prompt tokens that were not served from cache, i.e. input + cacheWrite. */
+	uncachedTokens: number;
 	/** Assistant output tokens. */
 	completionTokens: number;
 	/** promptTokens + completionTokens. */
@@ -53,6 +60,9 @@ export interface DashboardStats {
 
 /** Bucket key for summarization calls, which carry no provider/model. */
 export const SUMMARY_MODEL_KEY = "(summaries)";
+
+/** Tool name of the advisor extension's result, whose usage is billed separately. */
+const ADVISOR_TOOL_NAME = "advisor";
 
 /** Structural view of a provider usage record; avoids importing pi-ai types. */
 interface UsageLike {
@@ -68,6 +78,7 @@ interface MessageLike {
 	role?: string;
 	provider?: string;
 	model?: string;
+	toolName?: string;
 	usage?: UsageLike;
 	content?: unknown;
 }
@@ -97,6 +108,11 @@ export function addUsage(totals: UsageTotals, usage: UsageLike | undefined): voi
 
 export function getPromptTokens(totals: UsageTotals): number {
 	return totals.input + totals.cacheRead + totals.cacheWrite;
+}
+
+/** Prompt tokens that were not served from cache: input + cacheWrite. */
+export function getUncachedTokens(totals: UsageTotals): number {
+	return getPromptTokens(totals) - totals.cacheRead;
 }
 
 export function getTotalTokens(totals: UsageTotals): number {
@@ -130,6 +146,7 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 	const totals = createUsageTotals();
 	const assistant = createUsageTotals();
 	const summaries = createUsageTotals();
+	const advisor = createUsageTotals();
 	const byModel = new Map<string, UsageTotals>();
 
 	let assistantTurns = 0;
@@ -160,6 +177,10 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 		if (entry.type !== "message") continue;
 
 		const message = entry.message as unknown as MessageLike;
+		if (message.role === "toolResult") {
+			if (message.toolName === ADVISOR_TOOL_NAME) addUsage(advisor, message.usage);
+			continue;
+		}
 		if (message.role === "user") {
 			userMessages += 1;
 			continue;
@@ -183,6 +204,7 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 		totals,
 		assistant,
 		summaries,
+		advisor,
 		byModel: models,
 		assistantTurns,
 		userMessages,
@@ -190,6 +212,7 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 		compactions,
 		branchSummaries,
 		promptTokens: getPromptTokens(totals),
+		uncachedTokens: getUncachedTokens(totals),
 		completionTokens: totals.output,
 		totalTokens: getTotalTokens(totals),
 		cacheRate: getCacheHitRate(totals),

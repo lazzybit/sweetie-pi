@@ -12,9 +12,15 @@
  * already on screen and folded into an in-place notify update, so a slow or
  * failing API never delays the rest of the report.
  *
- *   Token Read       - everything the model read (prompt tokens, cached or not)
- *   Token Cache Read - the cached share of those reads, with cumulative hit %
- *   Token Write      - the model's output tokens
+ *   Session Read          - everything the main model read (prompt tokens)
+ *   Session Uncached Read - the non-cache-hit share of those reads
+ *   Session Cache Read    - the cached share of those reads, with cumulative hit %
+ *   Session Write         - the main model's output tokens
+ *
+ * When the advisor was used, a second block repeats the same four metrics with
+ * an `Advisor` prefix, right below the session block. Advisor usage is billed
+ * separately, so it never enters the session totals; unused, the block is
+ * omitted entirely.
  */
 
 import type {
@@ -22,7 +28,13 @@ import type {
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { fetchDeepSeekBalance } from "./deepseek.ts";
-import { computeDashboardStats, type DashboardStats } from "./stats.ts";
+import {
+	computeDashboardStats,
+	getCacheHitRate,
+	getPromptTokens,
+	getUncachedTokens,
+	type DashboardStats,
+} from "./stats.ts";
 
 const BAR_WIDTH = 10;
 const BALANCE_PENDING = "[checking]";
@@ -59,16 +71,31 @@ export function buildUsageReport(
 	const cacheSuffix = stats.cacheRate === undefined ? "" : ` (${formatPercent(stats.cacheRate)})`;
 
 	const body = [
-		`Token Read: ${formatCount(stats.promptTokens)}`,
-		`Token Cache Read: ${cacheRead}${cacheSuffix}`,
-		`Token Write: ${formatCount(stats.completionTokens)}`,
+		`Session Read: ${formatCount(stats.promptTokens)}`,
+		`Session Uncached Read: ${formatCount(stats.uncachedTokens)}`,
+		`Session Cache Read: ${cacheRead}${cacheSuffix}`,
+		`Session Write: ${formatCount(stats.completionTokens)}`,
+	];
+	if (stats.advisor.calls > 0) {
+		const advisorRate = getCacheHitRate(stats.advisor);
+		const advisorCacheSuffix =
+			advisorRate === undefined ? "" : ` (${formatPercent(advisorRate)})`;
+		body.push(
+			"",
+			`Advisor Read: ${formatCount(getPromptTokens(stats.advisor))}`,
+			`Advisor Uncached Read: ${formatCount(getUncachedTokens(stats.advisor))}`,
+			`Advisor Cache Read: ${formatCount(stats.advisor.cacheRead)}${advisorCacheSuffix}`,
+			`Advisor Write: ${formatCount(stats.advisor.output)}`,
+		);
+	}
+	body.push(
 		"",
 		contextEntry(ctx),
 		"",
 		`Assistant Turns: ${stats.assistantTurns}`,
 		`User Turns: ${stats.userMessages}`,
 		`Tool Calls: ${stats.toolCalls}`,
-	];
+	);
 	if (balance !== undefined) {
 		body.push("", `DeepSeek Balance: ${balance}`);
 	}
