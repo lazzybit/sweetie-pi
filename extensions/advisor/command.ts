@@ -2,7 +2,7 @@
  * Advisor settings command.
  *
  * Registers `/settings-advisor`, a SettingsList with three items: whether the
- * advisor tool is enabled, which reviewer model it uses, and the thinking
+ * advisor tool is enabled, which advisor model it uses, and the thinking
  * level requested from that model. Model and thinking level open searchable
  * pickers; choosing a model stores its provider and id together, and the
  * thinking levels follow the built-in `/thinking` logic (levels supported by

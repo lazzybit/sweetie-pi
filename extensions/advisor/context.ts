@@ -1,9 +1,9 @@
 /**
  * Advisor conversation construction.
  *
- * Turns the current session branch into the message list sent to the reviewer:
+ * Turns the current session branch into the message list sent to the advisor:
  * a deterministic executor tool inventory followed by the LLM-facing branch,
- * with the in-flight advisor tool call removed so the reviewer never sees a
+ * with the in-flight advisor tool call removed so the advisor never sees a
  * call that has not returned yet.
  */
 

@@ -1,7 +1,7 @@
 /**
  * Advisor model invocation.
  *
- * Resolves the configured reviewer, forwards the built conversation, and maps
+ * Resolves the configured advisor, forwards the built conversation, and maps
  * the completion response onto a tool result. Success and cancellation keep
  * their details; unavailable results return a generic message while the
  * detailed reason is sent as a UI notification.
