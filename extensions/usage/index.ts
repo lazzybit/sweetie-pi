@@ -36,7 +36,6 @@ import {
 	type DashboardStats,
 } from "./stats.ts";
 
-const BAR_WIDTH = 10;
 const BALANCE_PENDING = "[checking]";
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -49,17 +48,10 @@ function formatPercent(ratio: number): string {
 	return `${(ratio * 100).toFixed(1)}%`;
 }
 
-/** Unicode meter: filled for the ratio, empty for the remainder. */
-function renderBar(ratio: number, width: number): string {
-	const clamped = Math.max(0, Math.min(1, ratio));
-	const filled = Math.round(clamped * width);
-	return "█".repeat(filled) + "░".repeat(width - filled);
-}
-
 function contextEntry(ctx: ExtensionContext): string {
 	const usage = ctx.getContextUsage();
 	if (!usage || usage.percent === null) return "Context: --";
-	return `Context: ${usage.percent.toFixed(1)}% ${renderBar(usage.percent / 100, BAR_WIDTH)}`;
+	return `Context: ${usage.percent.toFixed(1)}%`;
 }
 
 export function buildUsageReport(
