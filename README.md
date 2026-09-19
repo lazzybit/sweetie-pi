@@ -23,7 +23,7 @@ Or run `/settings-advisor`.
 
 ## usage
 
-Run `/usage` to show cumulative token, cache, and context stats.
+Run `/usage` to show stats.
 
 ## openai-proxy
 

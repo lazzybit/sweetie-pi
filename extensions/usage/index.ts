@@ -3,10 +3,14 @@
  *
  * Unlike the footer's `CH:` (which reports the cache hit rate of the latest
  * assistant turn only), this aggregates every LLM call on the active branch.
+ * It also appends the DeepSeek account balance, folding in what used to be the
+ * separate `/deepseek-balance` command.
  *
- * Output is a plain `Label: value` list via `ctx.ui.notify()`, matching the
- * deepseek-balance style. Labels are capitalized, there are no section headers,
- * and blank lines separate logical blocks.
+ * Output is a plain `Label: value` list via a single `ctx.ui.notify()`.
+ * Labels are capitalized, there are no section headers, and blank lines
+ * separate logical blocks. The DeepSeek balance is fetched after the stats are
+ * already on screen and folded into an in-place notify update, so a slow or
+ * failing API never delays the rest of the report.
  *
  *   Token Read       - everything the model read (prompt tokens, cached or not)
  *   Token Cache Read - the cached share of those reads, with cumulative hit %
@@ -17,9 +21,11 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { fetchDeepSeekBalance } from "./deepseek.ts";
 import { computeDashboardStats, type DashboardStats } from "./stats.ts";
 
 const BAR_WIDTH = 10;
+const BALANCE_PENDING = "[checking]";
 
 const numberFormat = new Intl.NumberFormat("en-US");
 
@@ -44,7 +50,11 @@ function contextEntry(ctx: ExtensionContext): string {
 	return `Context: ${usage.percent.toFixed(1)}% ${renderBar(usage.percent / 100, BAR_WIDTH)}`;
 }
 
-export function buildUsageReport(stats: DashboardStats, ctx: ExtensionContext): string {
+export function buildUsageReport(
+	stats: DashboardStats,
+	ctx: ExtensionContext,
+	balance?: string,
+): string {
 	const cacheRead = formatCount(stats.totals.cacheRead);
 	const cacheSuffix = stats.cacheRate === undefined ? "" : ` (${formatPercent(stats.cacheRate)})`;
 
@@ -59,6 +69,9 @@ export function buildUsageReport(stats: DashboardStats, ctx: ExtensionContext): 
 		`User Turns: ${stats.userMessages}`,
 		`Tool Calls: ${stats.toolCalls}`,
 	];
+	if (balance !== undefined) {
+		body.push("", `DeepSeek Balance: ${balance}`);
+	}
 
 	return body.join("\n");
 }
@@ -68,7 +81,11 @@ export default function (pi: ExtensionAPI) {
 		description: "Show cumulative conversation usage (tokens, cache rate, context)",
 		handler: async (_args, ctx) => {
 			const stats = computeDashboardStats(ctx.sessionManager.getBranch());
-			ctx.ui.notify(buildUsageReport(stats, ctx), "info");
+			// Show stats immediately with a placeholder; the balance arrives in a
+			// follow-up notify that replaces this status block in place.
+			ctx.ui.notify(buildUsageReport(stats, ctx, BALANCE_PENDING), "info");
+			const balance = await fetchDeepSeekBalance(ctx);
+			ctx.ui.notify(buildUsageReport(stats, ctx, balance), "info");
 		},
 	});
 }
