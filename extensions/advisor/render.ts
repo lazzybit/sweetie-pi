@@ -49,7 +49,9 @@ function advisorDisplayName(config: AdvisorConfig): string {
   return config.model ?? "unconfigured";
 }
 
-export function createAdvisorRenderers(config: AdvisorConfig): AdvisorRenderers {
+export function createAdvisorRenderers(
+  getConfig: () => AdvisorConfig,
+): AdvisorRenderers {
   return {
     renderCall(_args, theme, context) {
       const state = context.state;
@@ -61,7 +63,7 @@ export function createAdvisorRenderers(config: AdvisorConfig): AdvisorRenderers 
       const displayLabel =
         theme.fg("toolTitle", theme.bold(ADVISOR_TOOL_NAME)) +
         " " +
-        theme.fg("accent", advisorDisplayName(config));
+        theme.fg("accent", advisorDisplayName(getConfig()));
 
       return new Text(displayLabel, 0, 0);
     },

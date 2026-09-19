@@ -20,7 +20,7 @@ import type {
   OpenAIResponsesOptions,
   StopReason,
   TextContent,
-  ThinkingLevel,
+  ModelThinkingLevel,
   Usage,
 } from "@earendil-works/pi-ai";
 import type { AdvisorConfig } from "./config.ts";
@@ -34,7 +34,7 @@ import {
 
 export type AdvisorDetails = {
   advisorModel?: string;
-  effort?: ThinkingLevel;
+  effort?: ModelThinkingLevel;
   usage?: Usage;
   stopReason?: StopReason;
   errorMessage?: string;
@@ -108,14 +108,15 @@ function responseResult(
 function buildCompletionOptions(
   api: string,
   signal: AbortSignal | undefined,
-  effort: ThinkingLevel | undefined,
+  effort: ModelThinkingLevel | undefined,
   sessionId: string | undefined,
 ): CompletionOptions {
   // Passing the pi session id keeps prompt-cache routing stable across advisor
   // calls: Responses emits prompt_cache_key plus session_id and
   // x-client-request-id affinity headers when sessionId is set.
   const base = { signal, sessionId };
-  if (effort === undefined) return base;
+  // "off" means no reasoning effort is requested; let the provider decide.
+  if (effort === undefined || effort === "off") return base;
 
   if (api === "openai-responses") {
     const options: OpenAIResponsesOptions = {

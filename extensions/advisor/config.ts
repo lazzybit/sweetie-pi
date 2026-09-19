@@ -1,9 +1,11 @@
 /**
- * Advisor settings loading and validation.
+ * Advisor settings loading, validation, and persistence.
  *
  * Reads the advisor block from global and project settings, merges project
- * over global, and reports invalid fields as one combined message. Nothing
- * here talks to a model or the UI.
+ * over global, and reports invalid fields as one combined message. Updates are
+ * written back to the global settings file, merging into whatever is already
+ * there so unrelated settings survive. Nothing here talks to a model or the
+ * UI.
  */
 
 import {
@@ -11,7 +13,9 @@ import {
   SettingsManager,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import type { ThinkingLevel } from "@earendil-works/pi-ai";
+import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 type AdvisorSettingsFile = {
   advisor?: unknown;
@@ -21,11 +25,19 @@ export type AdvisorConfig = {
   enabled: boolean;
   provider?: string;
   model?: string;
-  effort?: ThinkingLevel;
+  effort?: ModelThinkingLevel;
   errorMessage?: string;
 };
 
-const THINKING_LEVELS: readonly ThinkingLevel[] = [
+export type AdvisorSettingsUpdate = {
+  enabled?: boolean;
+  provider?: string;
+  model?: string;
+  thinkingLevel?: ModelThinkingLevel;
+};
+
+const THINKING_LEVELS: readonly ModelThinkingLevel[] = [
+  "off",
   "minimal",
   "low",
   "medium",
@@ -38,9 +50,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isThinkingLevel(value: unknown): value is ThinkingLevel {
+function stripBom(text: string): string {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+/**
+ * Persist advisor fields to the global settings file, merging into whatever is
+ * already there. The file is written in place so a symlinked settings.json
+ * keeps pointing at its target. Throws when the file cannot be parsed, so the
+ * caller can surface the problem instead of clobbering the file.
+ */
+export function updateAdvisorSettings(update: AdvisorSettingsUpdate): void {
+  const settingsPath = join(getAgentDir(), "settings.json");
+  let settings: Record<string, unknown> = {};
+  let raw: string | undefined;
+  try {
+    raw = readFileSync(settingsPath, "utf-8");
+  } catch {
+    raw = undefined;
+  }
+  if (raw !== undefined) {
+    const parsed: unknown = JSON.parse(stripBom(raw));
+    if (!isRecord(parsed)) {
+      throw new Error("settings.json must contain a JSON object.");
+    }
+    settings = parsed;
+  }
+
+  const advisor = isRecord(settings.advisor) ? settings.advisor : {};
+  settings.advisor = { ...advisor, ...update };
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf-8");
+}
+
+function isThinkingLevel(value: unknown): value is ModelThinkingLevel {
   return (
-    typeof value === "string" && THINKING_LEVELS.includes(value as ThinkingLevel)
+    typeof value === "string" &&
+    THINKING_LEVELS.includes(value as ModelThinkingLevel)
   );
 }
 
@@ -93,13 +138,13 @@ export function loadAdvisorConfig(ctx: ExtensionContext): AdvisorConfig {
     }
   }
 
-  let effort: ThinkingLevel | undefined;
+  let effort: ModelThinkingLevel | undefined;
   if (settings.thinkingLevel !== undefined) {
     if (isThinkingLevel(settings.thinkingLevel)) {
       effort = settings.thinkingLevel;
     } else {
       errors.push(
-        "advisor.thinkingLevel must be one of: minimal, low, medium, high, xhigh, max.",
+        "advisor.thinkingLevel must be one of: off, minimal, low, medium, high, xhigh, max.",
       );
     }
   }

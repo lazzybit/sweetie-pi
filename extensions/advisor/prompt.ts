@@ -26,3 +26,41 @@ export const ADVISOR_SYSTEM_PROMPT = [
 
 export const ADVISOR_DESCRIPTION =
   "Ask a stronger reviewer model for guidance. The full conversation and executor tool inventory are forwarded automatically. Takes no parameters.";
+
+export const ADVISOR_COMMAND_NAME = "settings-advisor";
+export const ADVISOR_COMMAND_DESCRIPTION =
+  "Configure the advisor tool's enabled state, model, and thinking level";
+export const ADVISOR_TUI_ONLY_MESSAGE =
+  "Advisor settings require interactive TUI mode.";
+
+export const ADVISOR_ENABLED_LABEL = "Enabled";
+export const ADVISOR_ENABLED_DESCRIPTION =
+  "Expose the advisor tool to the agent";
+export const ADVISOR_MODEL_LABEL = "Model";
+export const ADVISOR_MODEL_DESCRIPTION =
+  "Reviewer model used by the advisor tool";
+export const ADVISOR_MODEL_SUBMENU_TITLE = "Advisor model";
+export const ADVISOR_MODEL_SUBMENU_HINT =
+  "  Type to search \u00b7 Enter to select \u00b7 Esc to go back";
+export const ADVISOR_NO_MODELS_LABEL = "No models available";
+export const ADVISOR_NO_MODELS_DESCRIPTION =
+  "Log in to a provider or configure an API key first";
+export const ADVISOR_NOT_SET = "not set";
+export const ADVISOR_SAVE_ERROR_MESSAGE = "Could not save advisor settings";
+
+export const ADVISOR_THINKING_LABEL = "Thinking Level";
+export const ADVISOR_THINKING_DESCRIPTION =
+  "Reasoning effort requested from the advisor model";
+export const ADVISOR_THINKING_SUBMENU_TITLE = "Thinking Level";
+export const ADVISOR_THINKING_SUBMENU_HINT =
+  "  Type to search \u00b7 Enter to select \u00b7 Esc to go back";
+export const ADVISOR_THINKING_DEFAULT = "default";
+export const ADVISOR_THINKING_LEVEL_DESCRIPTIONS: Record<string, string> = {
+  off: "No reasoning",
+  minimal: "Very brief reasoning (~1k tokens)",
+  low: "Light reasoning (~2k tokens)",
+  medium: "Moderate reasoning (~8k tokens)",
+  high: "Deep reasoning (~16k tokens)",
+  xhigh: "Extra-high reasoning (~32k tokens)",
+  max: "Maximum reasoning",
+};

@@ -19,6 +19,8 @@ Configure the advisor model in `settings.json`:
 }
 ```
 
+Or run `/settings-advisor`.
+
 ## openai-proxy
 
 Set custom endpoint:
