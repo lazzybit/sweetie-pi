@@ -14,7 +14,7 @@
  *
  *   Session Read          - everything the main model read (prompt tokens)
  *   Session Uncached Read - the non-cache-hit share of those reads
- *   Session Cache Read    - the cached share of those reads, with cumulative hit %
+ *   Session Cached Read   - the cached share of those reads, with cumulative hit %
  *   Session Write         - the main model's output tokens
  *
  * When the advisor was used, a second block repeats the same four metrics with
@@ -65,7 +65,7 @@ export function buildUsageReport(
 	const body = [
 		`Session Read: ${formatCount(stats.promptTokens)}`,
 		`Session Uncached Read: ${formatCount(stats.uncachedTokens)}`,
-		`Session Cache Read: ${cacheRead}${cacheSuffix}`,
+		`Session Cached Read: ${cacheRead}${cacheSuffix}`,
 		`Session Write: ${formatCount(stats.completionTokens)}`,
 	];
 	if (stats.advisor.calls > 0) {
@@ -76,7 +76,7 @@ export function buildUsageReport(
 			"",
 			`Advisor Read: ${formatCount(getPromptTokens(stats.advisor))}`,
 			`Advisor Uncached Read: ${formatCount(getUncachedTokens(stats.advisor))}`,
-			`Advisor Cache Read: ${formatCount(stats.advisor.cacheRead)}${advisorCacheSuffix}`,
+			`Advisor Cached Read: ${formatCount(stats.advisor.cacheRead)}${advisorCacheSuffix}`,
 			`Advisor Write: ${formatCount(stats.advisor.output)}`,
 		);
 	}
