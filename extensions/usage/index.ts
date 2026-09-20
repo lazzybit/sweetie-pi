@@ -17,10 +17,15 @@
  *   Session Cached Read   - the cached share of those reads, with cumulative hit %
  *   Session Write         - the main model's output tokens
  *
- * When the advisor was used, a second block repeats the same four metrics with
- * an `Advisor` prefix, right below the session block. Advisor usage is billed
- * separately, so it never enters the session totals; unused, the block is
- * omitted entirely.
+ * Prompt-cache warming refreshes are `usage` entries that stay out of model
+ * context but are billed to the main model, so they are already inside the
+ * session totals. When any were recorded, a `Cache Warming` block right below
+ * the session block breaks out how much of the session read was warm-up; omitted
+ * when none were recorded.
+ *
+ * When the advisor was used, another block repeats the session metrics with an
+ * `Advisor` prefix. Advisor usage is billed separately, so it never enters the
+ * session totals; unused, the block is omitted entirely.
  */
 
 import type {
@@ -68,6 +73,16 @@ export function buildUsageReport(
 		`Session Cached Read: ${cacheRead}${cacheSuffix}`,
 		`Session Write: ${formatCount(stats.completionTokens)}`,
 	];
+	if (stats.cacheWarm.calls > 0) {
+		const warmRate = getCacheHitRate(stats.cacheWarm);
+		const warmCacheSuffix =
+			warmRate === undefined ? "" : ` (${formatPercent(warmRate)})`;
+		body.push(
+			"",
+			`Cache Warming Read: ${formatCount(getPromptTokens(stats.cacheWarm))}`,
+			`Cache Warming Cached Read: ${formatCount(stats.cacheWarm.cacheRead)}${warmCacheSuffix}`,
+		);
+	}
 	if (stats.advisor.calls > 0) {
 		const advisorRate = getCacheHitRate(stats.advisor);
 		const advisorCacheSuffix =

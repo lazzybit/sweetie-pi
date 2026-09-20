@@ -1,10 +1,11 @@
 /**
  * Advisor model invocation.
  *
- * Resolves the configured advisor, forwards the built conversation, and maps
- * the completion response onto a tool result. Success and cancellation keep
- * their details; unavailable results return a generic message while the
- * detailed reason is sent as a UI notification.
+ * Resolves the configured advisor, streams the built conversation, forwards
+ * text deltas to the caller for progressive display, and maps the final
+ * response onto a tool result. Success and cancellation keep their details;
+ * unavailable results return a generic message while the detailed reason is
+ * sent as a UI notification.
  */
 
 import type {
@@ -16,8 +17,6 @@ import type {
 import type {
   AssistantMessage,
   Message,
-  OpenAICompletionsOptions,
-  OpenAIResponsesOptions,
   StopReason,
   TextContent,
   ModelThinkingLevel,
@@ -40,8 +39,8 @@ export type AdvisorDetails = {
   errorMessage?: string;
 };
 
-type CompletionOptions = NonNullable<
-  Parameters<ExtensionContext["modelRegistry"]["complete"]>[2]
+type SimpleStreamOptions = NonNullable<
+  Parameters<ExtensionContext["modelRegistry"]["streamSimple"]>[2]
 >;
 
 function result(
@@ -105,36 +104,20 @@ function responseResult(
   return result(text, details);
 }
 
-function buildCompletionOptions(
-  api: string,
+function buildStreamOptions(
   signal: AbortSignal | undefined,
   effort: ModelThinkingLevel | undefined,
   sessionId: string | undefined,
-): CompletionOptions {
+): SimpleStreamOptions {
   // Passing the pi session id keeps prompt-cache routing stable across advisor
   // calls: Responses emits prompt_cache_key plus session_id and
-  // x-client-request-id affinity headers when sessionId is set.
-  const base = { signal, sessionId };
+  // x-client-request-id affinity headers when sessionId is set. The provider-
+  // neutral `reasoning` level replaces the former per-API branching so the
+  // resolved provider maps it to whatever it accepts.
+  const options: SimpleStreamOptions = { signal, sessionId };
   // "off" means no reasoning effort is requested; let the provider decide.
-  if (effort === undefined || effort === "off") return base;
-
-  if (api === "openai-responses") {
-    const options: OpenAIResponsesOptions = {
-      ...base,
-      reasoningEffort: effort,
-    };
-    return options;
-  }
-
-  if (api === "openai-completions") {
-    const options: OpenAICompletionsOptions = {
-      ...base,
-      reasoningEffort: effort,
-    };
-    return options;
-  }
-
-  return base;
+  if (effort === undefined || effort === "off") return options;
+  return { ...options, reasoning: effort };
 }
 
 export function errorText(error: unknown): string {
@@ -218,20 +201,30 @@ export async function executeAdvisor(
   });
 
   try {
-    const response = await ctx.modelRegistry.complete(
+    const stream = ctx.modelRegistry.streamSimple(
       advisor,
       {
         systemPrompt: ADVISOR_SYSTEM_PROMPT,
         messages,
         tools: [],
       },
-      buildCompletionOptions(
-        advisor.api,
-        signal,
-        effort,
-        ctx.sessionManager.getSessionId(),
-      ),
+      buildStreamOptions(signal, effort, ctx.sessionManager.getSessionId()),
     );
+
+    // Stream the advisor's text to the caller as it arrives. Only text deltas
+    // are forwarded: partials are display-only, and the final tool result is
+    // still built from the complete response below.
+    let streamedText = "";
+    for await (const event of stream) {
+      if (event.type !== "text_delta") continue;
+      streamedText += event.delta;
+      onUpdate?.({
+        content: [{ type: "text", text: streamedText }],
+        details: { advisorModel: advisorLabel, effort },
+      });
+    }
+
+    const response = await stream.result();
 
     return responseResult(response, ctx, config, advisorLabel);
   } catch (error) {

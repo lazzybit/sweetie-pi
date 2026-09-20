@@ -8,9 +8,14 @@
  * Every call is counted, not just visible assistant turns:
  * - assistant messages (the conversation itself)
  * - compaction and branch summaries (summarization overhead)
+ * - `usage` entries, such as prompt-cache warming refreshes (they never enter
+ *   model context but are billed to the main model, so they count in `totals`)
  *
  * Advisor tool results are bucketed separately: their usage is billed to the
  * advisor model, not to the main conversation, so it never enters `totals`.
+ * Cache-warming refreshes (`kind: "cache_warm"`) additionally get their own
+ * bucket so their share of the session's cache activity stays visible; other
+ * `usage` kinds are counted only in `totals` and are never mislabelled.
  */
 
 import type { SessionEntry } from "@earendil-works/pi-coding-agent";
@@ -40,6 +45,8 @@ export interface DashboardStats {
 	summaries: UsageTotals;
 	/** Advisor tool calls only; separate from `totals` (different model and bill). */
 	advisor: UsageTotals;
+	/** `kind: "cache_warm"` usage entries only. In `totals` too. */
+	cacheWarm: UsageTotals;
 	byModel: ModelUsage[];
 	assistantTurns: number;
 	userMessages: number;
@@ -147,6 +154,7 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 	const assistant = createUsageTotals();
 	const summaries = createUsageTotals();
 	const advisor = createUsageTotals();
+	const cacheWarm = createUsageTotals();
 	const byModel = new Map<string, UsageTotals>();
 
 	let assistantTurns = 0;
@@ -171,6 +179,16 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 			addUsage(summaries, entry.usage);
 			addUsage(totals, entry.usage);
 			addUsage(bucket(SUMMARY_MODEL_KEY), entry.usage);
+			continue;
+		}
+
+		// Background, model-attributed usage that never enters model context.
+		// Every kind counts as normal main-model usage; only cache warming is
+		// also broken out, so unknown kinds are billed but never mislabelled.
+		if (entry.type === "usage") {
+			addUsage(totals, entry.usage);
+			addUsage(bucket(`${entry.provider}/${entry.model}`), entry.usage);
+			if (entry.kind === "cache_warm") addUsage(cacheWarm, entry.usage);
 			continue;
 		}
 
@@ -205,6 +223,7 @@ export function computeDashboardStats(entries: SessionEntry[]): DashboardStats {
 		assistant,
 		summaries,
 		advisor,
+		cacheWarm,
 		byModel: models,
 		assistantTurns,
 		userMessages,
