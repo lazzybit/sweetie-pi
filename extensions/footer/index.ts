@@ -18,15 +18,22 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 const UNKNOWN_CONTEXT = "CTX:--%";
 const UNKNOWN_CACHE = "CH:--%";
 
+/** Model ids may be namespaced (e.g. `provider/model`); show only the last segment. */
+function shortModelId(id: string): string {
+	const parts = id.split("/");
+	return parts[parts.length - 1] || id;
+}
+
 function modelLabel(ctx: ExtensionContext): string {
 	const model = ctx.model;
 	if (!model) {
 		return "no-model";
 	}
+	const id = shortModelId(model.id);
 	if (!model.reasoning) {
-		return model.id;
+		return id;
 	}
-	return `${model.id} (${ctx.thinkingLevel ?? "off"})`;
+	return `${id} (${ctx.thinkingLevel ?? "off"})`;
 }
 
 /** Latest assistant on the active branch: whether one exists and its cache hit rate. */
