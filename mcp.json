@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "oauth": {
+        "clientId": "Ov23ctZDe8AJr0QMDiIq",
+        "clientSecret": "926973be2c0c692ffc8049e2a631569872b15cf2",
+        "callbackUrl": "http://localhost:8765/callback",
+        "scope": "repo read:org read:user gist notifications"
+      },
+      "description": "GitHub: repositories, issues, pull requests, actions, code search"
+    }
+  }
+}
