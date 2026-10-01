@@ -13,7 +13,7 @@ import {
   SettingsManager,
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
+import type { ModelThinkingLevel, RetryPolicy } from "@earendil-works/pi-ai";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -26,6 +26,8 @@ export type AdvisorConfig = {
   provider?: string;
   model?: string;
   effort?: ModelThinkingLevel;
+  /** Retry policy shared with agent-turn and summarization retries. */
+  retry: RetryPolicy;
   errorMessage?: string;
 };
 
@@ -154,6 +156,7 @@ export function loadAdvisorConfig(ctx: ExtensionContext): AdvisorConfig {
     provider,
     model,
     effort,
+    retry: settingsManager.getRetrySettings(),
     errorMessage: errors.length > 0 ? errors.join(" ") : undefined,
   };
 }

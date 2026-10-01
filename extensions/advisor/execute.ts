@@ -3,9 +3,10 @@
  *
  * Resolves the configured advisor, streams the built conversation, forwards
  * text deltas to the caller for progressive display, and maps the final
- * response onto a tool result. Success and cancellation keep their details;
- * unavailable results return a generic message while the detailed reason is
- * sent as a UI notification.
+ * response onto a tool result. Transient stream failures are retried with the
+ * shared agent retry policy before giving up; success and cancellation keep
+ * their details; unavailable results return a generic message while the
+ * detailed reason is sent as a UI notification.
  */
 
 import type {
@@ -14,6 +15,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { retryAssistantCall } from "@earendil-works/pi-ai";
 import type {
   AssistantMessage,
   Message,
@@ -195,12 +197,17 @@ export async function executeAdvisor(
     );
   }
 
-  onUpdate?.({
-    content: [{ type: "text", text: "" }],
-    details: { advisorModel: advisorLabel, effort },
-  });
+  // One advisor attempt: stream the response, forward text deltas for
+  // progressive display, and return the complete message. Streamed text resets
+  // on every attempt so partial output from a retried failure is never shown
+  // twice or carried into the final result.
+  const attemptAdvisor = async (): Promise<AssistantMessage> => {
+    let streamedText = "";
+    onUpdate?.({
+      content: [{ type: "text", text: "" }],
+      details: { advisorModel: advisorLabel, effort },
+    });
 
-  try {
     const stream = ctx.modelRegistry.streamSimple(
       advisor,
       {
@@ -211,10 +218,8 @@ export async function executeAdvisor(
       buildStreamOptions(signal, effort, ctx.sessionManager.getSessionId()),
     );
 
-    // Stream the advisor's text to the caller as it arrives. Only text deltas
-    // are forwarded: partials are display-only, and the final tool result is
-    // still built from the complete response below.
-    let streamedText = "";
+    // Only text deltas are forwarded: partials are display-only, and the final
+    // tool result is still built from the complete response below.
     for await (const event of stream) {
       if (event.type !== "text_delta") continue;
       streamedText += event.delta;
@@ -224,7 +229,18 @@ export async function executeAdvisor(
       });
     }
 
-    const response = await stream.result();
+    return stream.result();
+  };
+
+  try {
+    // Retry transient stream failures with the same policy the agent loop and
+    // summarization use (settings.retry). Deterministic errors fail fast and
+    // aborts are terminal; aborts during backoff resolve to an aborted message.
+    const response = await retryAssistantCall(
+      attemptAdvisor,
+      config.retry,
+      signal,
+    );
 
     return responseResult(response, ctx, config, advisorLabel);
   } catch (error) {
