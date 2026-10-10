@@ -1,0 +1,27 @@
+{
+  "lastChangelogVersion": "1.1.0",
+  "theme": "light/dark",
+  "defaultTools": [
+    "+codemode"
+  ],
+  "defaultProvider": "cline-pass",
+  "defaultModel": "cline-pass/deepseek-v4.1-flash",
+  "defaultThinkingLevel": "high",
+  "advisor": {
+    "enabled": true,
+    "provider": "openai",
+    "model": "gpt-6-astra",
+    "thinkingLevel": "xhigh"
+  },
+  "retry": {
+    "enabled": true,
+    "maxRetries": 1000,
+    "baseDelayMs": 5000,
+    "maxAgentDelayMs": 5000
+  },
+  "hideThinkingBlock": true,
+  "fullscreenScrollbar": "hidden",
+  "transport": "auto",
+  "enableInstallTelemetry": false,
+  "quietStartup": false
+}

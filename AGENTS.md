@@ -1,0 +1,1 @@
+- 忽略 extensions/openai-proxy/config.ts 的本地改動
